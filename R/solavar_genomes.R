@@ -5,7 +5,6 @@
 # (doi:10.1038/s41588-019-0410-2).
 
 library(dplyr)
-library(tidyr)
 library(googlesheets4)
 gs4_auth(path = "~/.credentials/google_sheets_api/service_account.json")
 
@@ -27,7 +26,7 @@ metadata <- read_sheet("1V2kH8G4tfYsYqnYb6bVHpGjwwkjd9le0arGBJ2o4r8s")
 clean_tables <- function(input_df){
   input_df <- input_df %>%
     filter(LibraryStrategy == "WGS") %>%
-    select(Run, Platform, SampleName)
+    select(Run, SampleName, Platform, LibrarySource, LoadDate)
   return(input_df)
 }
 
@@ -51,22 +50,22 @@ gao_clean <- left_join(gao_clean, metadata[ , c("name_TGRC", "name_original_razi
 
 # Making the columns for upload -------------------------------------------
 # Andria's spreadsheet has columns:
-# order, sra_id, batch, description, LA ID, strain ID, notes
-# I don't need order or batch and I already have the rest. I will add the 
-# paper and platform in notes.
+# order, sra_id, batch, description, LA ID, strain ID, notes, sequencing_type, sequencing_details, submission_date, collection_date, sequencing_date
 
-alonge_clean <- alonge_clean %>%
-  mutate(paper = "Alonge2020", order = "", batch = "", strain = "") %>%
-  unite("notes", c("paper", "Platform"), sep = " ", remove = TRUE) %>%
-  relocate(order, Run, batch, SampleName, name_TGRC, strain, notes)
+alonge <- alonge_clean %>%
+  mutate(notes = "Alonge_2020", order = "", batch = "", strain = "", collection_date = "", sequencing_date = "") %>%
+  relocate(order, sra_id = Run, batch, description = SampleName, "LA ID" = name_TGRC, 
+           "strain ID" = strain, notes, sequencing_type = Platform, sequencing_details = LibrarySource,
+           submission_date = LoadDate)
 
-gao_clean <- gao_clean %>%
-  mutate(paper = "Gao2019", order = "", batch = "", strain = "") %>%
-  unite("notes", c("paper", "Platform"), sep = " ", remove = TRUE) %>%
-  relocate(order, Run, batch, SampleName, name_TGRC, strain, notes)
+gao <- gao_clean %>%
+  mutate(notes = "Gao_2019", order = "", batch = "", strain = "", collection_date = "", sequencing_date = "") %>%
+  relocate(order, sra_id = Run, batch, description = SampleName, "LA ID" = name_TGRC, 
+           "strain ID" = strain, notes, sequencing_type = Platform, sequencing_details = LibrarySource,
+           submission_date = LoadDate)
 
 # Adding them together
-df <- rbind(alonge_clean, gao_clean)
+df <- rbind(alonge, gao)
 
 
 # Uploading ---------------------------------------------------------------
