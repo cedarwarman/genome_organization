@@ -5,16 +5,70 @@
 # (doi:10.1038/s41588-019-0410-2).
 
 library(dplyr)
+library(tidyr)
 library(googlesheets4)
 gs4_auth(path = "~/.credentials/google_sheets_api/service_account.json")
 
 # Loading existing data ---------------------------------------------------
-# I will start with just the tables from the two papers, then possibly add 
-# a table I made to reconcile all the different names.
+# I will start with just the tables from the two papers, then add a table I 
+# made to reconcile all the different names.
 
-# Alonge
-alonge_source <- read_sheet("1AghS5eZrdbwwEwFDvzyI-ERfkmEOjNp90UY8HjgwFh0", 
-                            sheet = "S1B",
-                            skip = 1)
+# Table downloaded from: https://www.ncbi.nlm.nih.gov/sra?linkname=bioproject_sra_all&from_uid=557253
+alonge_sra_source <- read_sheet("18f05G-wFJhkA041bAnXgpcvss56Jt_mzV7CayOR9saY")
+
 # Gao et al. Table downloaded from: https://www.ncbi.nlm.nih.gov/sra/SRP150040
-gao_source <- read_sheet("1MyYgkeG4DrUFpYyENYwVys4tmZvxo6hkS2Ap7U_qUXQ")
+gao_sra_source <- read_sheet("1MyYgkeG4DrUFpYyENYwVys4tmZvxo6hkS2Ap7U_qUXQ")
+
+# Metadata table that has all the different names
+metadata <- read_sheet("1V2kH8G4tfYsYqnYb6bVHpGjwwkjd9le0arGBJ2o4r8s")
+
+
+# Cleaning the tables -----------------------------------------------------
+clean_tables <- function(input_df){
+  input_df <- input_df %>%
+    filter(LibraryStrategy == "WGS") %>%
+    select(Run, Platform, SampleName)
+  return(input_df)
+}
+
+alonge_clean <- clean_tables(alonge_sra_source)
+gao_clean <- clean_tables(gao_sra_source)
+
+
+# Adding LA names when available ------------------------------------------
+# I made this big metadata sheet that has all the names I could find. At the 
+# moment I'm only interested in the LA names, so I'll make a simpler version
+# with just those.
+metadata <- metadata %>%
+  select(name_TGRC, name_original_alonge, name_original_razifard)
+
+# Joining based on the original names
+alonge_clean <- left_join(alonge_clean, metadata[ , c("name_TGRC", "name_original_alonge")], 
+                          by = c("SampleName" = "name_original_alonge"))
+gao_clean <- left_join(gao_clean, metadata[ , c("name_TGRC", "name_original_razifard")], 
+                       by = c("SampleName" = "name_original_razifard"))
+
+
+# Making the columns for upload -------------------------------------------
+# Andria's spreadsheet has columns:
+# order, sra_id, batch, description, LA ID, strain ID, notes
+# I don't need order or batch and I already have the rest. I will add the 
+# paper and platform in notes.
+
+alonge_clean <- alonge_clean %>%
+  mutate(paper = "Alonge2020", order = "", batch = "", strain = "") %>%
+  unite("notes", c("paper", "Platform"), sep = " ", remove = TRUE) %>%
+  relocate(order, Run, batch, SampleName, name_TGRC, strain, notes)
+
+gao_clean <- gao_clean %>%
+  mutate(paper = "Gao2019", order = "", batch = "", strain = "") %>%
+  unite("notes", c("paper", "Platform"), sep = " ", remove = TRUE) %>%
+  relocate(order, Run, batch, SampleName, name_TGRC, strain, notes)
+
+# Adding them together
+df <- rbind(alonge_clean, gao_clean)
+
+
+# Uploading ---------------------------------------------------------------
+
+write_sheet(df, "12MQAydwr0ZPQbvit51qavE1XN0inlPjpkhQXHyWzfvY", sheet = "Sheet1")
