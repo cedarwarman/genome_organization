@@ -15,21 +15,21 @@ alonge_metadata <- read.table(
   header = TRUE
 )
 
-solavar_metadata <- read.table(
-  file = file.path(getwd(), "data", "solavar_metadata.txt"),
+varitome_metadata <- read.table(
+  file = file.path(getwd(), "data", "varitome_metadata.txt"),
   sep = ',',
   header = TRUE
 )
 
 
 # Figuring out the size ---------------------------------------------------
-# It's pretty straightforward for the Solavar samples, as far as I can tell
+# It's pretty straightforward for the varitome samples, as far as I can tell
 # there's nothing extra in here. First getting the size in GB.
-solavar_metadata <- solavar_metadata %>%
+varitome_metadata <- varitome_metadata %>%
   mutate(size_gb = Bytes / 10^9)
 
 # Total size in TB:
-sum(solavar_metadata$size_gb) / 1000 # 1.43 TB
+sum(varitome_metadata$size_gb) / 1000 # 1.43 TB
 
 # For the Alonge long read data there's some extra RNA-seq stuff in there.
 alonge_metadata <- alonge_metadata %>%
