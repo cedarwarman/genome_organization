@@ -4,6 +4,8 @@
 
 library(dplyr)
 library(googlesheets4)
+library(stringr)
+
 gs4_auth(path = "~/.credentials/google_sheets_api/service_account.json")
 
 
@@ -51,10 +53,11 @@ alonge_metadata_output <- alonge_metadata %>%
 
 # Loading the metadata sheet
 metadata <- read_sheet("1V2kH8G4tfYsYqnYb6bVHpGjwwkjd9le0arGBJ2o4r8s") %>%
-  select(wave:name_original_razifard)
+  select(name_CW:name_original_razifard)
 
 sra_info_varitome <- varitome_metadata %>%
-  select(Run, Sample.Name)
+  select(Run, Sample.Name) %>%
+  mutate(Sample.Name = str_replace_all(Sample.Name, " ", ""))
 
 sra_info_alonge <- alonge_metadata_output %>%
   select(Run, Sample.Name)
@@ -62,3 +65,7 @@ sra_info_alonge <- alonge_metadata_output %>%
 # Joining in the CW identifiers
 sra_info_varitome <- sra_info_varitome %>%
   left_join(metadata, join_by(Sample.Name == name_original_razifard))
+
+sra_info_alonge_with_cw <- sra_info_alonge %>%
+  left_join(metadata, join_by(Sample.Name == name_original_alonge)) %>%
+  select(Run, Sample.Name, name_CW)
